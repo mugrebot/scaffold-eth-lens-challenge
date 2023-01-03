@@ -350,7 +350,7 @@ function App(props) {
           },
         });
         console.log("attempting to createprofile for: ", user_selected_handle);
-        if ((await createProfile_const.data?.createProfile?.txHash) != undefined) {
+        if ((await createProfile_const.data?.createProfile?.txHash) !== undefined) {
           console.log(
             "create profile successful:",
             `${request.handle}.test`,
