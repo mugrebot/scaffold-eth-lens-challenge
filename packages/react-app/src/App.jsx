@@ -1,4 +1,4 @@
-import { Button, Col, Menu, Row } from "antd";
+import { Button, Col, Menu, Row, Input, Modal } from "antd";
 
 import "antd/dist/antd.css";
 import {
@@ -31,6 +31,15 @@ import deployedContracts from "./contracts/hardhat_contracts.json";
 import { getRPCPollTime, Transactor, Web3ModalSetup } from "./helpers";
 import { Home, ExampleUI, Hints, Subgraph } from "./views";
 import { useStaticJsonRPC, useGasPrice } from "./hooks";
+import {
+  authenticate,
+  challenge,
+  client,
+  exploreProfiles,
+  profileaddress,
+  getPublications,
+  createProfile,
+} from "./helpers/api.js";
 
 const { ethers } = require("ethers");
 /*
@@ -53,7 +62,7 @@ const { ethers } = require("ethers");
 */
 
 /// 📡 What chain are your contracts deployed to?
-const initialNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, goerli, xdai, mainnet)
+const initialNetwork = NETWORKS.mumbai; // <------- select your target frontend network (localhost, goerli, xdai, mainnet)
 
 // 😬 Sorry for all the console logging
 const DEBUG = true;
@@ -64,11 +73,7 @@ const USE_NETWORK_SELECTOR = false;
 const web3Modal = Web3ModalSetup();
 
 // 🛰 providers
-const providers = [
-  "https://eth-mainnet.gateway.pokt.network/v1/lb/611156b4a585a20035148406",
-  `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-  "https://rpc.scaffoldeth.io:48544",
-];
+const providers = ["https://rpc-mumbai.maticvigil.com/"];
 
 function App(props) {
   // specify all the chains your app is available on. Eg: ['localhost', 'mainnet', ...otherNetworks ]
@@ -79,6 +84,14 @@ function App(props) {
   const [address, setAddress] = useState();
   const [selectedNetwork, setSelectedNetwork] = useState(networkOptions[0]);
   const location = useLocation();
+  //lens consts
+  const [token, setToken] = useState();
+  const [profileId, setProfileId] = useState();
+  const [user_selected_handle, setUser_selected_handle] = useState();
+  const [open, setOpen] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [modalText, setModalText] = useState("Content of the modal");
+  const [handle, setHandle] = useState();
 
   const targetNetwork = NETWORKS[selectedNetwork];
 
@@ -261,6 +274,119 @@ function App(props) {
 
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
+  //we will start by adding a function to sign in and generate an authentication key and sign the user in to lens
+  async function login() {
+    try {
+      /* first request the challenge from the API server */
+      const challengeInfo = await client.query({
+        query: challenge,
+        variables: { address },
+      });
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      /* ask the user to sign a message with the challenge info returned from the server */
+      const signature = await signer.signMessage(challengeInfo.data.challenge.text);
+      /* authenticate the user */
+      const authData = await client.mutate({
+        mutation: authenticate,
+        variables: {
+          address,
+          signature,
+        },
+      });
+      /* if user authentication is successful, you will receive an accessToken and refreshToken */
+      const {
+        data: {
+          authenticate: { accessToken },
+        },
+      } = authData;
+      console.log({ accessToken });
+      setToken(accessToken);
+    } catch (err) {
+      console.log("Error signing in: ", err);
+    }
+  }
+
+  const handleOk = () => {
+    setModalText("The modal will be closed after two seconds");
+    setConfirmLoading(true);
+    createProfileRequest();
+    setTimeout(() => {
+      setOpen(false);
+      setConfirmLoading(false);
+    }, 2000);
+  };
+  const handleCancel = () => {
+    console.log("Clicked cancel button");
+    setUser_selected_handle();
+    setOpen(false);
+  };
+
+  const handleChange = event => {
+    setUser_selected_handle(event.target.value);
+  };
+
+  //finish out the function below to create a profile for the user
+  async function createProfileRequest() {}
+
+  /* UNCOMMENT
+    if (user_selected_handle === undefined) {
+      setOpen(true);
+      console.log("modal should open");
+    } else {
+      try {
+        //we need to create a profile for the user, from the lens docs for profile creation, a request consists of
+        //handle, profilePictureUri, and followModule
+        //we will set the profile picture uri to null and the follow module to null
+        //we will set the handle to the user selected handle
+        const request = {
+          handle: `${user_selected_handle}`,
+          profilePictureUri: null,
+          followModule: null,
+        };
+        //we will use the createProfile mutation to create a profile for the user
+        //check api.js in ../helpers for the createProfile mutation follow the pattern for the authentication 
+        //mutation and how it is executed above
+        //the createProfile mutation requires an authentication token to be passed in the request header as x-access-token, it's included below
+        //finish the rest of the code below to create a profile for the user
+
+        const createProfile_const = await client.mutate({
+
+          context: {
+            //PASS THE TOKEN HERE
+            //**HINT "x-access-token" HINT*
+          }/
+          //DEFINE THE MUTATION AND PASS REQUEST
+          },
+        } catch (err) {
+          console.log("Error creating profile: ", err);
+          
+        console.log("attempting to createprofile for: ", user_selected_handle);
+        if ((/*condition here ) != undefined ) {
+          console.log(
+            "create profile successful:",
+            `${}.test`,
+            "created at txHash:",
+            ,
+          );
+          setHandle(``);
+          return;
+        } else {
+          console.log("create profile failed, try again!:", createProfile_const.data?.createProfile?.reason);
+          setOpen(true);
+        }
+      } catch (err) {
+        console.log("Error creating profile: ", err);
+        setOpen(true);
+      }
+    }
+  }
+ UNCOMMENT */
+
+  //next let's find a request to make to the API server that requires authentication
+  //we will use the createProfile query to create a profile for the user
+  //normally we would make separate components for the login and profile creation but for the sake of simplicity we will do it all in one component
+
   return (
     <div className="App">
       {/* ✏️ Edit the header and change the title to your project name */}
@@ -327,7 +453,34 @@ function App(props) {
       <Switch>
         <Route exact path="/">
           {/* pass in any web3 props to this Home component. For example, yourLocalBalance */}
-          <Home yourLocalBalance={yourLocalBalance} readContracts={readContracts} />
+          {/* if the user has connected their wallet but has not yet authenticated, show them a login button */}
+          {address && handle ? (
+            <h2>{handle}</h2>
+          ) : (
+            <div onClick={createProfileRequest}>
+              <button>claimProfile</button>
+            </div>
+          )}
+
+          <Modal
+            title="Choose your handle!"
+            visible={open}
+            onOk={handleOk}
+            confirmLoading={confirmLoading}
+            onCancel={handleCancel}
+          >
+            <Input
+              style={{
+                width: "calc(100% - 200px)",
+              }}
+              defaultValue=""
+              onChange={handleChange}
+              onCancel={handleCancel}
+              onOk={createProfileRequest}
+              destroyOnClose
+              value={user_selected_handle}
+            />
+          </Modal>
         </Route>
         <Route exact path="/debug">
           {/*
@@ -406,9 +559,18 @@ function App(props) {
       <div style={{ position: "fixed", textAlign: "left", left: 0, bottom: 20, padding: 10 }}>
         <Row align="middle" gutter={[4, 4]}>
           <Col span={8}>
+            {/* once the user has authenticated, show them a success message */}
+            {address && token && <h2>Successfully signed in! </h2> && { token } ? (
+              <h2>Successfully signed in! </h2>
+            ) : (
+              <div onClick={login}>
+                <button>login!</button>
+              </div>
+            )}
+          </Col>
+          <Col span={8}>
             <Ramp price={price} address={address} networks={NETWORKS} />
           </Col>
-
           <Col span={8} style={{ textAlign: "center", opacity: 0.8 }}>
             <GasGauge gasPrice={gasPrice} />
           </Col>
