@@ -179,6 +179,7 @@ import {
       console.log("Error signing in: ", err);
     }
   }
+```
 
   # 4. 😎 Claiming a handle!
 
