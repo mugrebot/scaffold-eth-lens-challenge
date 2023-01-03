@@ -121,7 +121,9 @@ export const createProfile = gql`
 
 The queries we've defined here will allow a user to authenticate (https://docs.lens.xyz/docs/authentication-quickstart), generating an authentication token that is required to perform other queries such as creating a profile, following other users, setting default handle, changing profile picture, etc. 
 
-#3 Authentication 
+```
+
+  # 3. 😎 Authentication
 
 we can now authenticate using the api, lets add the following code exists in to our app.jsx file, note that the imports should be near the other imports, the state variables with the other state variables, and the functions might be seperated along the app.jsx file as opposed to how you see them below!
 
