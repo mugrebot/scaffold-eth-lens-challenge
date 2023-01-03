@@ -1,3 +1,6 @@
+//allow unused vars for now
+/* eslint-disable no-unused-vars */
+
 import { Button, Col, Menu, Row, Input, Modal } from "antd";
 
 import "antd/dist/antd.css";
