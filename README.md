@@ -137,7 +137,6 @@ import {
 } from "./helpers/api.js";
 
 
-  //lens consts some of these will make more sense as we move along the challenge!
   const [address, setAddress] = useState();
   const [token, setToken] = useState();
   const [profileId, setProfileId] = useState();
@@ -155,7 +154,6 @@ import {
         query: challenge,
         variables: { address },
       });
-      /* ask the user to sign a message with the challenge info returned from the server */
 
       const signature = await signer.signMessage(challengeInfo.data.challenge.text);
       console.log(address);
@@ -238,7 +236,7 @@ import {
 
 ### 🎉 Congratulations! You've built your first Lens application!
 
-# 6. 🚀 Lets bundle up our app and Ship it!
+# 5. 🚀 Lets bundle up our app and Ship it!
 
 First, we need to optimize our build before we deploy it to
 
