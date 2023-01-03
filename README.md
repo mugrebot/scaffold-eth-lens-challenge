@@ -1,70 +1,260 @@
-# 🏗 Scaffold-ETH
+# 🏗 Scaffold-ETH + ▲ Next.js + Lens Developer Challenge 🌿
 
-> everything you need to build on Ethereum! 🚀
+> Lets BUIDL on Lens! 🚀
 
-🧪 Quickly experiment with Solidity using a frontend that adapts to your smart contract:
+![image](https://files.readme.io/c2459de-illustration_grow.svg)
 
-![image](https://user-images.githubusercontent.com/2653167/124158108-c14ca380-da56-11eb-967e-69cde37ca8eb.png)
+🔍 What is Lens?
 
+Lens Protocol is a decentralized social network that has a low carbon footprint and an established web3 team behind it. Each user retains ownership over their profile and the content they create.
 
-# 🏄‍♂️ Quick Start
+[Learn more about Lens here!](https://docs.lens.xyz/docs/what-is-lens)
 
-Prerequisites: [Node (v18 LTS)](https://nodejs.org/en/download/) plus [Yarn (v1.x)](https://classic.yarnpkg.com/en/docs/install/) and [Git](https://git-scm.com/downloads)
+# 🏄‍♂️ Here we go!
 
-🚨 If you are using a version < v18 you will need to remove `openssl-legacy-provider` from the `start` script in `package.json`
+Prerequisites: [Node](https://nodejs.org/en/download/) plus [Yarn](https://classic.yarnpkg.com/en/docs/install/) and [Git](https://git-scm.com/downloads)
 
 > clone/fork 🏗 scaffold-eth:
 
 ```bash
-git clone https://github.com/scaffold-eth/scaffold-eth.git
+git clone https://github.com/mugrebot/scaffold-eth-lens-challenge
+```
+
+> checkout the `scaffold-nextjs` branch
+
+```bash
+cd scaffold-eth-lens-challenge
 ```
 
 > install and start your 👷‍ Hardhat chain:
 
 ```bash
-cd scaffold-eth
 yarn install
 yarn chain
 ```
 
-> in a second terminal window, start your 📱 frontend:
+> in a second terminal window, 🛰 deploy your contract (once you write them!):
 
 ```bash
-cd scaffold-eth
-yarn start
-```
 
-> in a third terminal window, 🛰 deploy your contract:
+yarn generate 
 
-```bash
-cd scaffold-eth
+cd scaffold-eth-lens-challenge
+
 yarn deploy
 ```
 
 🔏 Edit your smart contract `YourContract.sol` in `packages/hardhat/contracts`
 
-📝 Edit your frontend `App.jsx` in `packages/react-app/src`
-
 💼 Edit your deployment scripts in `packages/hardhat/deploy`
 
 📱 Open http://localhost:3000 to see the app
 
-# 📚 Documentation
+# 📚 Lens API
+
+In this challenge you'll use the [Lens API](https://docs.lens.xyz/docs/introduction) to fetch and render a social media feed, navigate to view an individual profile, and fetch and view the user's publications.
+
+The Lens API can be tested at any time [here](https://api.lens.dev/) using any of the GraphQL queries [in the API docs.](https://docs.lens.xyz/docs/introduction)
+
+> Watch this intro video by Nader Dabit on the Lens API.
+
+[![Intro to Lens API](https://i.ytimg.com/vi/mIJKa2-2p8w/hqdefault.jpg)](https://youtu.be/mIJKa2-2p8w)
+
+# 1. 👨🏻‍💻 Install dependancies
+
+> First, change into the services directory and install these dependencies for the GraphQL client into the packages/services folder:
+
+```bash
+cd packages/services
+yarn add @apollo/client graphql
+```
+
+
+> in a third terminal window, start your 📱 frontend:
+
+```bash
+cd ../../
+yarn start
+```
+
+📝 You will edit your frontend `app.jsx` in `packages/react-app/src`
+
+# 2. 🌐 Create the API
+
+Creating a basic GraphQL API is simple, we can do it in just a couple of lines of code. We'll also define the first GraphQL query we'll be using in our app.
+
+Create a new file named api.js in the packages/react-app/src/helpers and add the following code:
+
+```
+import { ApolloClient, InMemoryCache, gql } from "@apollo/client";
+
+const API_URL = "https://api-mumbai.lens.dev";
+
+/* create the API client */
+export const client = new ApolloClient({
+  uri: API_URL,
+  cache: new InMemoryCache(),
+});
+
+export const authenticate = gql`
+  mutation Authenticate($address: EthereumAddress!, $signature: Signature!) {
+    authenticate(request: { address: $address, signature: $signature }) {
+      accessToken
+      refreshToken
+    }
+  }
+`;
+
+export const createProfile = gql`
+  mutation createProfile($request: CreateProfileRequest!) {
+    createProfile(request: $request) {
+      ... on RelayerResult {
+        txHash
+      }
+      ... on RelayError {
+        reason
+      }
+      __typename
+    }
+  }
+`;
+
+The queries we've defined here will allow a user to authenticate (https://docs.lens.xyz/docs/authentication-quickstart), generating an authentication token that is required to perform other queries such as creating a profile, following other users, setting default handle, changing profile picture, etc. 
+
+#3 Authentication 
+
+we can now authenticate using the api, lets add the following code exists in to our app.jsx file, note that the imports should be near the other imports, the state variables with the other state variables, and the functions might be seperated along the app.jsx file as opposed to how you see them below!
+
+```
+import {
+  authenticate,
+  challenge,
+  client,
+  exploreProfiles,
+  profileaddress,
+  getPublications,
+  createProfile,
+} from "./helpers/api.js";
+
+
+  //lens consts some of these will make more sense as we move along the challenge!
+  const [address, setAddress] = useState();
+  const [token, setToken] = useState();
+  const [profileId, setProfileId] = useState();
+  const [user_selected_handle, setUser_selected_handle] = useState();
+  const [open, setOpen] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [modalText, setModalText] = useState("Content of the modal");
+  const [handle, setHandle] = useState();
+  const [signer, setUserSigner] = useState();
+
+ async function Login() {
+    try {
+      /* first request the challenge from the API server */
+      const challengeInfo = await client.query({
+        query: challenge,
+        variables: { address },
+      });
+      /* ask the user to sign a message with the challenge info returned from the server */
+
+      const signature = await signer.signMessage(challengeInfo.data.challenge.text);
+      console.log(address);
+      /* authenticate the user */
+      const authData = await client.mutate({
+        mutation: authenticate,
+        variables: {
+          address,
+          signature,
+        },
+      });
+      /* if user authentication is successful, you will receive an accessToken and refreshToken */
+      const {
+        data: {
+          authenticate: { accessToken },
+        },
+      } = authData;
+      console.log({ accessToken });
+      setToken(accessToken);
+    } catch (err) {
+      console.log("Error signing in: ", err);
+    }
+  }
+
+  # 4. 😎 Claiming a handle!
+
+  So far we should be able to "login" and receive an authentication token, it'll be up to you to create the query on app.jsx 
+
+  Since passing something as a header isn't included in the authentication step, we will give that first part to you - write the rest!
+
+  ```
+  async function createProfileRequest() {
+    if (user_selected_handle === undefined) {
+      setOpen(true);
+      console.log("modal should open");
+    } else {
+      try {
+        //lets package the request we are going to make! it requires a handle that the user will select via modal, profilePictureUri: null, followModule: null, 
+        const request = {
+          handle: `${user_selected_handle}`,
+          profilePictureUri: null,
+          followModule: null,
+        };
+
+//this part will model the authentication query
+        const createProfile_const = await client.mutate({
+          //x-access-token header puts in the request with your authentication token.
+          context: {
+            headers: {
+              "x-access-token": token,
+            },
+          },
+
+          mutation: /*what mutation do we need to create a profile?*/,
+          variables: {
+            /* what variable(s) to we need?*/,
+          },
+        });
+        console.log("attempting to createprofile for: ", user_selected_handle);
+        if ((/* what does this query return on success? */) != undefined) {
+          console.log(
+            "create profile successful:",
+            `${request.handle}.test`,
+            "created at txHash:",
+            /* what does this query return on success? */,
+          );
+          setHandle(`${request.handle}.test`);
+          return createProfile_const;
+        } else {
+          console.log("create profile failed, try again!:", createProfile_const.data?.createProfile?.reason);
+          setOpen(true);
+        }
+      } catch (err) {
+        console.log("Error creating profile: ", err);
+        setOpen(true);
+      }
+    }
+  }
+  ```
+
+### 🎉 Congratulations! You've built your first Lens application!
+
+# 6. 🚀 Lets bundle up our app and Ship it!
+
+First, we need to optimize our build before we deploy it to
+
+```
+yarn build
+```
+
+Use a file storage like IPFS or Surge to ship your app!
+
+```
+yarn surge
+```
+
+# 📚 Additional Resources
 
 Documentation, tutorials, challenges, and many more resources, visit: [docs.scaffoldeth.io](https://docs.scaffoldeth.io)
-
-
-# 🍦 Other Flavors
-- [scaffold-eth-typescript](https://github.com/scaffold-eth/scaffold-eth-typescript)
-- [scaffold-eth-tailwind](https://github.com/stevenpslade/scaffold-eth-tailwind)
-- [scaffold-nextjs](https://github.com/scaffold-eth/scaffold-eth/tree/scaffold-nextjs)
-- [scaffold-chakra](https://github.com/scaffold-eth/scaffold-eth/tree/chakra-ui)
-- [eth-hooks](https://github.com/scaffold-eth/eth-hooks)
-- [eth-components](https://github.com/scaffold-eth/eth-components)
-- [scaffold-eth-expo](https://github.com/scaffold-eth/scaffold-eth-expo)
-- [scaffold-eth-truffle](https://github.com/trufflesuite/scaffold-eth)
-
-
 
 # 🔭 Learning Solidity
 
@@ -81,44 +271,13 @@ Documentation, tutorials, challenges, and many more resources, visit: [docs.scaf
 - [Payable](https://solidity-by-example.org/payable/)
 - [Fallback](https://solidity-by-example.org/fallback/)
 
-📧 Learn the [Solidity globals and units](https://docs.soliditylang.org/en/latest/units-and-global-variables.html)
-
-# 🛠 Buidl
-
-Check out all the [active branches](https://github.com/scaffold-eth/scaffold-eth/branches/active), [open issues](https://github.com/scaffold-eth/scaffold-eth/issues), and join/fund the 🏰 [BuidlGuidl](https://BuidlGuidl.com)!
-
-  
- - 🚤  [Follow the full Ethereum Speed Run](https://medium.com/@austin_48503/%EF%B8%8Fethereum-dev-speed-run-bd72bcba6a4c)
-
-
- - 🎟  [Create your first NFT](https://github.com/scaffold-eth/scaffold-eth/tree/simple-nft-example)
- - 🥩  [Build a staking smart contract](https://github.com/scaffold-eth/scaffold-eth/tree/challenge-1-decentralized-staking)
- - 🏵  [Deploy a token and vendor](https://github.com/scaffold-eth/scaffold-eth/tree/challenge-2-token-vendor)
- - 🎫  [Extend the NFT example to make a "buyer mints" marketplace](https://github.com/scaffold-eth/scaffold-eth/tree/buyer-mints-nft)
- - 🎲  [Learn about commit/reveal](https://github.com/scaffold-eth/scaffold-eth-examples/tree/commit-reveal-with-frontend)
- - ✍️  [Learn how ecrecover works](https://github.com/scaffold-eth/scaffold-eth-examples/tree/signature-recover)
- - 👩‍👩‍👧‍👧  [Build a multi-sig that uses off-chain signatures](https://github.com/scaffold-eth/scaffold-eth/tree/meta-multi-sig)
- - ⏳  [Extend the multi-sig to stream ETH](https://github.com/scaffold-eth/scaffold-eth/tree/streaming-meta-multi-sig)
- - ⚖️  [Learn how a simple DEX works](https://medium.com/@austin_48503/%EF%B8%8F-minimum-viable-exchange-d84f30bd0c90)
- - 🦍  [Ape into learning!](https://github.com/scaffold-eth/scaffold-eth/tree/aave-ape)
-
-# 💌 P.S.
-
-🌍 You need an RPC key for testnets and production deployments, create an [Alchemy](https://www.alchemy.com/) account and replace the value of `ALCHEMY_KEY = xxx` in `packages/react-app/src/constants.js` with your new key.
-
-📣 Make sure you update the `InfuraID` before you go to production. Huge thanks to [Infura](https://infura.io/) for our special account that fields 7m req/day!
-
-# 🏃💨 Speedrun Ethereum
-Register as a builder [here](https://speedrunethereum.com) and start on some of the challenges and build a portfolio.
+📧 Learn the [Solidity globals and units](https://solidity.readthedocs.io/en/v0.6.6/units-and-global-variables.html)
 
 # 💬 Support Chat
 
-Join the telegram [support chat 💬](https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA) or buidlguidl [discord](https://discord.gg/pRsr6rwG) to ask questions and find others building with 🏗 scaffold-eth!
+Join the telegram [support chat 💬](https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA) to ask questions and find others building with 🏗 scaffold-eth!
 
 ---
 
 🙏 Please check out our [Gitcoin grant](https://gitcoin.co/grants/2851/scaffold-eth) too!
 
-### Automated with Gitpod
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#github.com/scaffold-eth/scaffold-eth)

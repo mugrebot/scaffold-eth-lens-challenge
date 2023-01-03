@@ -69,8 +69,8 @@ const DEBUG = true;
 const NETWORKCHECK = true;
 const USE_BURNER_WALLET = true; // toggle burner wallet feature
 const USE_NETWORK_SELECTOR = false;
-
 const web3Modal = Web3ModalSetup();
+console.log(web3Modal, "yeet");
 
 // 🛰 providers
 const providers = ["https://rpc-mumbai.maticvigil.com/"];
@@ -78,7 +78,7 @@ const providers = ["https://rpc-mumbai.maticvigil.com/"];
 function App(props) {
   // specify all the chains your app is available on. Eg: ['localhost', 'mainnet', ...otherNetworks ]
   // reference './constants.js' for other networks
-  const networkOptions = [initialNetwork.name, "mainnet", "goerli"];
+  const networkOptions = [initialNetwork.name, "mainnet", "goerli", "mumbai"];
 
   const [injectedProvider, setInjectedProvider] = useState();
   const [address, setAddress] = useState();
@@ -92,6 +92,7 @@ function App(props) {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [modalText, setModalText] = useState("Content of the modal");
   const [handle, setHandle] = useState();
+  const [signer, setUserSigner] = useState();
 
   const targetNetwork = NETWORKS[selectedNetwork];
 
@@ -138,6 +139,7 @@ function App(props) {
       if (userSigner) {
         const newAddress = await userSigner.getAddress();
         setAddress(newAddress);
+        setUserSigner(userSigner);
       }
     }
     getAddress();
@@ -237,8 +239,8 @@ function App(props) {
   ]);
 
   const loadWeb3Modal = useCallback(async () => {
+    const provider = await web3Modal.connect();
     //const provider = await web3Modal.connect();
-    const provider = await web3Modal.requestProvider();
     setInjectedProvider(new ethers.providers.Web3Provider(provider));
 
     provider.on("chainChanged", chainId => {
@@ -263,29 +265,22 @@ function App(props) {
     if (web3Modal.cachedProvider) {
       loadWeb3Modal();
     }
-    //automatically connect if it is a safe app
-    const checkSafeApp = async () => {
-      if (await web3Modal.isSafeApp()) {
-        loadWeb3Modal();
-      }
-    };
-    checkSafeApp();
   }, [loadWeb3Modal]);
 
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
   //we will start by adding a function to sign in and generate an authentication key and sign the user in to lens
-  async function login() {
+  async function Login() {
     try {
       /* first request the challenge from the API server */
       const challengeInfo = await client.query({
         query: challenge,
         variables: { address },
       });
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
       /* ask the user to sign a message with the challenge info returned from the server */
+
       const signature = await signer.signMessage(challengeInfo.data.challenge.text);
+      console.log(address);
       /* authenticate the user */
       const authData = await client.mutate({
         mutation: authenticate,
@@ -325,52 +320,42 @@ function App(props) {
   const handleChange = event => {
     setUser_selected_handle(event.target.value);
   };
-
-  //finish out the function below to create a profile for the user
-  async function createProfileRequest() {}
-
-  /* UNCOMMENT
+  async function createProfileRequest() {
     if (user_selected_handle === undefined) {
       setOpen(true);
       console.log("modal should open");
     } else {
       try {
-        //we need to create a profile for the user, from the lens docs for profile creation, a request consists of
-        //handle, profilePictureUri, and followModule
-        //we will set the profile picture uri to null and the follow module to null
-        //we will set the handle to the user selected handle
+        //we
         const request = {
           handle: `${user_selected_handle}`,
           profilePictureUri: null,
           followModule: null,
         };
-        //we will use the createProfile mutation to create a profile for the user
-        //check api.js in ../helpers for the createProfile mutation follow the pattern for the authentication 
-        //mutation and how it is executed above
-        //the createProfile mutation requires an authentication token to be passed in the request header as x-access-token, it's included below
-        //finish the rest of the code below to create a profile for the user
 
         const createProfile_const = await client.mutate({
-
+          //x-access-token header put in the request with your authentication token.
           context: {
-            //PASS THE TOKEN HERE
-            //**HINT "x-access-token" HINT*
-          }/
-          //DEFINE THE MUTATION AND PASS REQUEST
+            headers: {
+              "x-access-token": token,
+            },
           },
-        } catch (err) {
-          console.log("Error creating profile: ", err);
-          
+
+          mutation: createProfile,
+          variables: {
+            request,
+          },
+        });
         console.log("attempting to createprofile for: ", user_selected_handle);
-        if ((/*condition here ) != undefined ) {
+        if ((await createProfile_const.data?.createProfile?.txHash) != undefined) {
           console.log(
             "create profile successful:",
-            `${}.test`,
+            `${request.handle}.test`,
             "created at txHash:",
-            ,
+            createProfile_const.data?.createProfile?.txHash,
           );
-          setHandle(``);
-          return;
+          setHandle(`${request.handle}.test`);
+          return createProfile_const;
         } else {
           console.log("create profile failed, try again!:", createProfile_const.data?.createProfile?.reason);
           setOpen(true);
@@ -381,7 +366,6 @@ function App(props) {
       }
     }
   }
- UNCOMMENT */
 
   //next let's find a request to make to the API server that requires authentication
   //we will use the createProfile query to create a profile for the user
@@ -563,7 +547,7 @@ function App(props) {
             {address && token && <h2>Successfully signed in! </h2> && { token } ? (
               <h2>Successfully signed in! </h2>
             ) : (
-              <div onClick={login}>
+              <div onClick={Login}>
                 <button>login!</button>
               </div>
             )}
