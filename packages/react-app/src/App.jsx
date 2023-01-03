@@ -1,4 +1,8 @@
-//allow unused vars for now
+//lets disable no unsed vars for now
+//lets disable no undefined vars for now
+//lets disable no restricted globals for now
+/* eslint-disable no-restricted-globals */
+/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 
 import { Button, Col, Menu, Row, Input, Modal } from "antd";
@@ -84,10 +88,12 @@ function App(props) {
   const networkOptions = [initialNetwork.name, "mainnet", "goerli", "mumbai"];
 
   const [injectedProvider, setInjectedProvider] = useState();
-  const [address, setAddress] = useState();
+
   const [selectedNetwork, setSelectedNetwork] = useState(networkOptions[0]);
   const location = useLocation();
+  const [address, setAddress] = useState();
   //lens consts
+  /*
   const [token, setToken] = useState();
   const [profileId, setProfileId] = useState();
   const [user_selected_handle, setUser_selected_handle] = useState();
@@ -96,7 +102,7 @@ function App(props) {
   const [modalText, setModalText] = useState("Content of the modal");
   const [handle, setHandle] = useState();
   const [signer, setUserSigner] = useState();
-
+*/
   const targetNetwork = NETWORKS[selectedNetwork];
 
   // 🔭 block explorer URL
@@ -273,18 +279,19 @@ function App(props) {
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
   //we will start by adding a function to sign in and generate an authentication key and sign the user in to lens
+  /*
   async function Login() {
     try {
-      /* first request the challenge from the API server */
+      // first request the challenge from the API server 
       const challengeInfo = await client.query({
         query: challenge,
         variables: { address },
       });
-      /* ask the user to sign a message with the challenge info returned from the server */
+      // ask the user to sign a message with the challenge info returned from the server
 
       const signature = await signer.signMessage(challengeInfo.data.challenge.text);
       console.log(address);
-      /* authenticate the user */
+      // AUTHENTICATE THE USER
       const authData = await client.mutate({
         mutation: authenticate,
         variables: {
@@ -292,7 +299,7 @@ function App(props) {
           signature,
         },
       });
-      /* if user authentication is successful, you will receive an accessToken and refreshToken */
+      // if user authentication is successful, you will receive an accessToken and refreshToken 
       const {
         data: {
           authenticate: { accessToken },
@@ -304,7 +311,9 @@ function App(props) {
       console.log("Error signing in: ", err);
     }
   }
+  */
 
+  /* UNCOMMENT LINES 307-325 TO ENABLE MODAL/HANDLE SELECTION 
   const handleOk = () => {
     setModalText("The modal will be closed after two seconds");
     setConfirmLoading(true);
@@ -323,6 +332,8 @@ function App(props) {
   const handleChange = event => {
     setUser_selected_handle(event.target.value);
   };
+
+
   async function createProfileRequest() {
     if (user_selected_handle === undefined) {
       setOpen(true);
@@ -350,7 +361,7 @@ function App(props) {
           },
         });
         console.log("attempting to createprofile for: ", user_selected_handle);
-        if ((await createProfile_const.data?.createProfile?.txHash) !== undefined) {
+        if ((await createProfile_const.data?.createProfile?.txHash) != undefined) {
           console.log(
             "create profile successful:",
             `${request.handle}.test`,
@@ -370,9 +381,7 @@ function App(props) {
     }
   }
 
-  //next let's find a request to make to the API server that requires authentication
-  //we will use the createProfile query to create a profile for the user
-  //normally we would make separate components for the login and profile creation but for the sake of simplicity we will do it all in one component
+  */
 
   return (
     <div className="App">
@@ -420,11 +429,20 @@ function App(props) {
         <Menu.Item key="/">
           <Link to="/">App Home</Link>
         </Menu.Item>
+        <Menu.Item key="/debug">
+          <Link to="/debug">Debug Contracts</Link>
+        </Menu.Item>
         <Menu.Item key="/hints">
           <Link to="/hints">Hints</Link>
         </Menu.Item>
         <Menu.Item key="/exampleui">
           <Link to="/exampleui">ExampleUI</Link>
+        </Menu.Item>
+        <Menu.Item key="/mainnetdai">
+          <Link to="/mainnetdai">Mainnet DAI</Link>
+        </Menu.Item>
+        <Menu.Item key="/subgraph">
+          <Link to="/subgraph">Subgraph</Link>
         </Menu.Item>
       </Menu>
 
