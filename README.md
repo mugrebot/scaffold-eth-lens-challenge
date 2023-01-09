@@ -236,10 +236,75 @@ import {
     }
   }
   ```
+# 6. 😎 Make a post!!
+
+This next part will involve some information that we have provided for you in packages/react-app/src/constants.js
+
+It'll involve LENS_HUB, the address of the lens contract we want to read/write from (note this is a proxy contract, we highly recommend that you check these out as they can be very useful)
+
+It will involve the ABI, Application Binary Interface, which gives us the information needed to talk to the smart contract, like what functions/parameters and what they return
+
+Let's find the function post in the abi in constants.js 
+
+```
+        {
+          lock: true,
+          address: "{{LENS_HUB}}",
+          name: "post",
+          abi: {
+            inputs: [
+              {
+                components: [
+                  { internalType: "uint256", name: "profileId", type: "uint256" },
+                  { internalType: "string", name: "contentURI", type: "string" },
+                  { internalType: "address", name: "collectModule", type: "address" },
+                  { internalType: "bytes", name: "collectModuleInitData", type: "bytes" },
+                  { internalType: "address", name: "referenceModule", type: "address" },
+                  { internalType: "bytes", name: "referenceModuleInitData", type: "bytes" },
+                ],
+                internalType: "struct DataTypes.PostData",
+                name: "vars",
+                type: "tuple",
+              },
+            ],
+            name: "post",
+            outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+            stateMutability: "nonpayable",
+            type: "function",
+          },
+
+          params: [""],
+        },
+```
+
+This is how you instantiate a contract object using ethers.js - note this is extremely redundant and there is a simpler way to parse the abi information, we challenge you to do this, but for a learning example this works! Hint: the contract we want is [1] and the function we want is [30]
+
+```
+  const postContract = new ethers.Contract(LENS_HUB, [LENS_ABI?.children[1].children[30].abi], localProvider);
+  const postContractWSigner = postContract.connect(userSigner);
+```
+
+Here are the parameters we will need to pass to the post function (from Lens Developer Docs)
+
+```
+    const Id = await lens_id.getProfileIdByHandle(`${handle}`);
+    console.log(Id);
+    //convert ID to hex
+    const profileId = `${ethers.utils.hexlify(Id)}`;
+    const contentURI = "https://ipfs.io/ipfs/Qmby8QocUU2sPZL46rZeMctAuF5nrCc7eR1PPkooCztWPz";
+    const collectModule = "0x0BE6bD7092ee83D44a6eC1D949626FeE48caB30c";
+    const collectModuleInitData = "0x0000000000000000000000000000000000000000000000000000000000000001";
+    const referenceModule = "0x0000000000000000000000000000000000000000";
+    const referenceModuleInitData = "0x00";
+```
+
+Lets pass this info to the post function - and see what we get, we have gone ahead and made a getPub function in order to get your post/publication that you just made!
+
+If all goes well you should receive the IPFS uri! - Try rendering this information using packages/react-app/src/helpers/ipfs.js
 
 ### 🎉 Congratulations! You've built your first Lens application!
 
-# 5. 🚀 Lets bundle up our app and Ship it!
+# 6. 🚀 Lets bundle up our app and Ship it!
 
 First, we need to optimize our build before we deploy it to
 

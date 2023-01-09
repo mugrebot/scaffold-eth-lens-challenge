@@ -1,6 +1,9 @@
 //lets disable no unsed vars for now
 //lets disable no undefined vars for now
 //lets disable no restricted globals for now
+//disable undefined functions
+//disable unused vars
+
 /* eslint-disable no-restricted-globals */
 /* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
@@ -46,7 +49,9 @@ import {
   profileaddress,
   getPublications,
   createProfile,
+  createPostTypedData,
 } from "./helpers/api.js";
+import { LENS_ABI, LENS_HUB, MOCK_PROFILE_CREATOR_PROXY, NETWORK, HUB, PROXY } from "./constants";
 
 const { ethers } = require("ethers");
 /*
@@ -93,7 +98,7 @@ function App(props) {
   const location = useLocation();
   const [address, setAddress] = useState();
   //lens consts
-  /*
+
   const [token, setToken] = useState();
   const [profileId, setProfileId] = useState();
   const [user_selected_handle, setUser_selected_handle] = useState();
@@ -102,7 +107,8 @@ function App(props) {
   const [modalText, setModalText] = useState("Content of the modal");
   const [handle, setHandle] = useState();
   const [signer, setUserSigner] = useState();
-*/
+  const [pubURI, setPubURI] = useState();
+
   const targetNetwork = NETWORKS[selectedNetwork];
 
   // 🔭 block explorer URL
@@ -278,11 +284,9 @@ function App(props) {
 
   const faucetAvailable = localProvider && localProvider.connection && targetNetwork.name.indexOf("local") !== -1;
 
-  //we will start by adding a function to sign in and generate an authentication key and sign the user in to lens
-  /*
   async function Login() {
     try {
-      // first request the challenge from the API server 
+      // first request the challenge from the API server
       const challengeInfo = await client.query({
         query: challenge,
         variables: { address },
@@ -299,7 +303,7 @@ function App(props) {
           signature,
         },
       });
-      // if user authentication is successful, you will receive an accessToken and refreshToken 
+      // if user authentication is successful, you will receive an accessToken and refreshToken
       const {
         data: {
           authenticate: { accessToken },
@@ -311,9 +315,7 @@ function App(props) {
       console.log("Error signing in: ", err);
     }
   }
-  */
 
-  /* UNCOMMENT LINES 307-325 TO ENABLE MODAL/HANDLE SELECTION 
   const handleOk = () => {
     setModalText("The modal will be closed after two seconds");
     setConfirmLoading(true);
@@ -332,7 +334,6 @@ function App(props) {
   const handleChange = event => {
     setUser_selected_handle(event.target.value);
   };
-
 
   async function createProfileRequest() {
     if (user_selected_handle === undefined) {
@@ -361,7 +362,7 @@ function App(props) {
           },
         });
         console.log("attempting to createprofile for: ", user_selected_handle);
-        if ((await createProfile_const.data?.createProfile?.txHash) != undefined) {
+        if ((await createProfile_const.data?.createProfile?.txHash) !== undefined) {
           console.log(
             "create profile successful:",
             `${request.handle}.test`,
@@ -381,7 +382,54 @@ function App(props) {
     }
   }
 
-  */
+  //lets make a post function via the contract ABI
+  //describe the things happening below in comments
+
+  //this is creating a post contract using ethers, LENS_HUB (address), the abi of the contract, and the localProvider
+  const postContract = new ethers.Contract(LENS_HUB, [LENS_ABI?.children[1].children[30].abi], localProvider);
+  //this is connecting the postContract to the user's signer
+  const postContractWSigner = postContract.connect(userSigner);
+
+  //this is creating a lens_id contract using ethers, LENS_HUB (address), the abi of the contract, and the localProvider
+  const lens_id = new ethers.Contract(LENS_HUB, [LENS_ABI?.children[1].children[50].abi], localProvider);
+
+  async function makePost() {
+    /*
+    const Id = await lens_id.getProfileIdByHandle(`${handle}`);
+    console.log(Id);
+    //convert ID to hex
+    const profileId = `${ethers.utils.hexlify(Id)}`;
+    const contentURI = "https://ipfs.io/ipfs/Qmby8QocUU2sPZL46rZeMctAuF5nrCc7eR1PPkooCztWPz";
+    const collectModule = "0x0BE6bD7092ee83D44a6eC1D949626FeE48caB30c";
+    const collectModuleInitData = "0x0000000000000000000000000000000000000000000000000000000000000001";
+    const referenceModule = "0x0000000000000000000000000000000000000000";
+    const referenceModuleInitData = "0x00";
+
+    const component = [
+      profileId,
+      contentURI,
+      collectModule,
+      collectModuleInitData,
+      referenceModule,
+      referenceModuleInitData,
+    ];
+
+    try {
+      const makePost = await tx(postContractWSigner?.post(component));
+      console.log(makePost);
+    } catch (err) {
+      console.log({ err });
+    } */
+  }
+
+  //lets collect and view posts if they exist - making a reader function based off abi
+  const lens_Pub = new ethers.Contract(LENS_HUB, [LENS_ABI?.children[1].children[49].abi], localProvider);
+  console.log(lens_Pub);
+  async function getPub() {
+    const pub = await lens_Pub.getPub(await lens_id.getProfileIdByHandle(`${handle}`), "1");
+    console.log(pub);
+    setPubURI(pub.contentURI);
+  }
 
   return (
     <div className="App">
@@ -429,20 +477,11 @@ function App(props) {
         <Menu.Item key="/">
           <Link to="/">App Home</Link>
         </Menu.Item>
-        <Menu.Item key="/debug">
-          <Link to="/debug">Debug Contracts</Link>
-        </Menu.Item>
         <Menu.Item key="/hints">
           <Link to="/hints">Hints</Link>
         </Menu.Item>
         <Menu.Item key="/exampleui">
           <Link to="/exampleui">ExampleUI</Link>
-        </Menu.Item>
-        <Menu.Item key="/mainnetdai">
-          <Link to="/mainnetdai">Mainnet DAI</Link>
-        </Menu.Item>
-        <Menu.Item key="/subgraph">
-          <Link to="/subgraph">Subgraph</Link>
         </Menu.Item>
       </Menu>
 
@@ -455,6 +494,19 @@ function App(props) {
           ) : (
             <div onClick={createProfileRequest}>
               <button>claimProfile</button>
+            </div>
+          )}
+
+          <div onClick={makePost}>
+            <button>post</button>
+          </div>
+
+          {pubURI ? (
+            //copy onclick
+            <h2 onClick={copy}>{pubUri}</h2>
+          ) : (
+            <div onClick={getPub}>
+              <button>check that you made a post</button>
             </div>
           )}
 

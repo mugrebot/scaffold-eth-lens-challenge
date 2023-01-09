@@ -111,3 +111,50 @@ export const createProfile = gql`
     }
   }
 `;
+
+export const createPostTypedData = gql`
+  mutation createPostTypedData($request: CreatePublicPostRequest!) {
+    createPostTypedData(request: $request) {
+      id
+      expiresAt
+      typedData {
+        types {
+          PostWithSig {
+            name
+            type
+          }
+        }
+        domain {
+          name
+          chainId
+          version
+          verifyingContract
+        }
+        value {
+          nonce
+          deadline
+          profileId
+          contentURI
+          collectModule
+          collectModuleInitData
+          referenceModule
+          referenceModuleInitData
+        }
+      }
+    }
+  }
+`;
+
+export const CreatePostViaDispatcher = gql`
+  mutation CreatePostViaDispatcher($request: CreatePublicPostRequest!) {
+    createPostViaDispatcher(request: $request) {
+      ... on RelayerResult {
+        txHash
+        txId
+      }
+      ... on RelayError {
+        reason
+      }
+    }
+  }
+`;
