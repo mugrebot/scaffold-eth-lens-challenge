@@ -584,7 +584,7 @@ function App(props) {
           {profile ? (
             //copy onclick
             <div style={{ padding: 5 }} className="pt-20 flex flex-col justify-center items-center">
-              <img className="w-64 rounded-full" src={profile.avatarUrl} alt="No Profile Image Set" />
+              <img className="w-64 rounded-full" src={profile.avatarUrl} alt="Profile not Set" />
               <p className="text-4xl mt-8 mb-8">{profile.handle}</p>
               <p className="text-center text-xl font-bold mt-2 mb-2 w-1/2">{profile.bio}</p>
               {publications.map(pub => (
