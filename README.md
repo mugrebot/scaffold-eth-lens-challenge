@@ -298,9 +298,7 @@ Here are the parameters we will need to pass to the post function (from Lens Dev
     const referenceModuleInitData = "0x00";
 ```
 
-Lets pass this info to the post function - and see what we get, we have gone ahead and made a getPub function in order to get your post/publication that you just made!
-
-If all goes well you should receive the IPFS uri! - Try rendering this information using packages/react-app/src/helpers/ipfs.js
+Lets pass this info to the post function - and see what we get, we have gone ahead and made a tab called "Your Lens Profile" if you have gotten this far try clicking the button, it should show your handle as well as your first post gm 🌿 gm 🌿
 
 ### 🎉 Congratulations! You've built your first Lens application!
 

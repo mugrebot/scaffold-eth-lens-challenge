@@ -50,6 +50,7 @@ import {
   getPublications,
   createProfile,
   createPostTypedData,
+  getProfile,
 } from "./helpers/api.js";
 import { LENS_ABI, LENS_HUB, MOCK_PROFILE_CREATOR_PROXY, NETWORK, HUB, PROXY } from "./constants";
 
@@ -335,7 +336,9 @@ function App(props) {
     setUser_selected_handle(event.target.value);
   };
 
+  //try to create the profile for a given input handle, modal for your input will take in whatever you type and try to mint that handle
   async function createProfileRequest() {
+    /*
     if (user_selected_handle === undefined) {
       setOpen(true);
       console.log("modal should open");
@@ -370,6 +373,12 @@ function App(props) {
             createProfile_const.data?.createProfile?.txHash,
           );
           setHandle(`${request.handle}.test`);
+          console.log(handle);
+          const Id = await lens_id.getProfileIdByHandle(`${handle}`);
+          console.log(Id);
+          const profileIds = `${ethers.utils.hexlify(Id)}`;
+          setProfileId(profileIds);
+          //convert ID to hex
           return createProfile_const;
         } else {
           console.log("create profile failed, try again!:", createProfile_const.data?.createProfile?.reason);
@@ -380,6 +389,7 @@ function App(props) {
         setOpen(true);
       }
     }
+    */
   }
 
   //lets make a post function via the contract ABI
@@ -395,10 +405,13 @@ function App(props) {
 
   async function makePost() {
     /*
+    console.log(handle);
     const Id = await lens_id.getProfileIdByHandle(`${handle}`);
     console.log(Id);
     //convert ID to hex
-    const profileId = `${ethers.utils.hexlify(Id)}`;
+    const profileIds = `${ethers.utils.hexlify(Id)}`;
+    setProfileId(profileIds);
+
     const contentURI = "https://ipfs.io/ipfs/Qmby8QocUU2sPZL46rZeMctAuF5nrCc7eR1PPkooCztWPz";
     const collectModule = "0x0BE6bD7092ee83D44a6eC1D949626FeE48caB30c";
     const collectModuleInitData = "0x0000000000000000000000000000000000000000000000000000000000000001";
@@ -419,16 +432,59 @@ function App(props) {
       console.log(makePost);
     } catch (err) {
       console.log({ err });
-    } */
+    }
+    */
   }
 
-  //lets collect and view posts if they exist - making a reader function based off abi
+  //lets us collect and view posts if they exist - making a reader function based off abi just to show that you can do it without the api but it is tougher
   const lens_Pub = new ethers.Contract(LENS_HUB, [LENS_ABI?.children[1].children[49].abi], localProvider);
   console.log(lens_Pub);
   async function getPub() {
     const pub = await lens_Pub.getPub(await lens_id.getProfileIdByHandle(`${handle}`), "1");
     console.log(pub);
     setPubURI(pub.contentURI);
+  }
+
+  const [profile, setProfile] = useState();
+  const [publications, setPublications] = useState([]);
+
+  //this is a function that fetches the profile of the user and displays it in /profile
+
+  async function fetchProfile() {
+    try {
+      console.log("userhandle", handle);
+      /* fetch the user profile using their handle */
+      const returnedProfile = await client.query({
+        query: getProfile,
+        variables: { handle: `${handle}` },
+      });
+      console.log(returnedProfile, "profile");
+      const profileData = { ...returnedProfile.data.profile };
+      /* format their picture if it is not in the right format */
+      const picture = profileData.picture;
+      if (picture && picture.original && picture.original.url) {
+        if (picture.original.url.startsWith("ipfs://")) {
+          let result = picture.original.url.substring(7, picture.original.url.length);
+          profileData.avatarUrl = `http://lens.infura-ipfs.io/ipfs/${result}`;
+        } else {
+          profileData.avatarUrl = profileData.picture.original.url;
+        }
+      }
+      setProfile(profileData);
+      /* fetch the user's publications from the Lens API and set them in the state */
+      console.log("trying for publications");
+      const pubs = await client.query({
+        query: getPublications,
+        variables: {
+          id: profileData?.id,
+          limit: 50,
+        },
+      });
+      console.log(pubs);
+      setPublications(pubs?.data?.publications?.items);
+    } catch (err) {
+      console.log("error fetching profile...", err);
+    }
   }
 
   return (
@@ -477,6 +533,9 @@ function App(props) {
         <Menu.Item key="/">
           <Link to="/">App Home</Link>
         </Menu.Item>
+        <Menu.Item key="/profile">
+          <Link to="/profile">Your Lens Profile</Link>
+        </Menu.Item>
         <Menu.Item key="/hints">
           <Link to="/hints">Hints</Link>
         </Menu.Item>
@@ -492,23 +551,14 @@ function App(props) {
           {address && handle ? (
             <h2>{handle}</h2>
           ) : (
-            <div onClick={createProfileRequest}>
+            <div style={{ padding: 20 }} onClick={createProfileRequest}>
               <button>claimProfile</button>
             </div>
           )}
 
-          <div onClick={makePost}>
+          <div style={{ padding: 5 }} onClick={makePost}>
             <button>post</button>
           </div>
-
-          {pubURI ? (
-            //copy onclick
-            <h2 onClick={copy}>{pubUri}</h2>
-          ) : (
-            <div onClick={getPub}>
-              <button>check that you made a post</button>
-            </div>
-          )}
 
           <Modal
             title="Choose your handle!"
@@ -529,6 +579,25 @@ function App(props) {
               value={user_selected_handle}
             />
           </Modal>
+        </Route>
+        <Route exact path="/profile">
+          {profile ? (
+            //copy onclick
+            <div style={{ padding: 5 }} className="pt-20 flex flex-col justify-center items-center">
+              <img className="w-64 rounded-full" src={profile.avatarUrl} alt="No Profile Image Set" />
+              <p className="text-4xl mt-8 mb-8">{profile.handle}</p>
+              <p className="text-center text-xl font-bold mt-2 mb-2 w-1/2">{profile.bio}</p>
+              {publications.map(pub => (
+                <div style={{ padding: 6 }} key={pub.id} className="shadow p-10 rounded mb-8 w-2/3">
+                  <p>{pub.metadata.content}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: 20 }} onClick={fetchProfile}>
+              <button>go claim a handle</button>
+            </div>
+          )}
         </Route>
         <Route exact path="/debug">
           {/*
